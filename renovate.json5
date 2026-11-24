@@ -1,0 +1,42 @@
+{
+  $schema: "https://docs.renovatebot.com/renovate-schema.json",
+  // Renovate is run for this repository from dapper-cluster's "Renovate (image repos)"
+  // workflow; there is no Renovate workflow here.
+  extends: [
+    // Same shared base as dapper-cluster: config:recommended, digest-pinned actions and
+    // images, dependency dashboard, semantic commit messages.
+    "github>home-operations/renovate-presets#12.0.0",
+    ":semanticCommits",
+    ":timezone(America/New_York)",
+  ],
+  // Renovate merges once the Build workflow's tests pass on the pull request. Not GitHub's
+  // own auto-merge: this repository has no required checks, so that would merge at once.
+  platformAutomerge: false,
+  rebaseWhen: "conflicted",
+  packageRules: [
+    {
+      description: "Auto-merge minor, patch and digest updates after a three-day soak",
+      // Every merge to main publishes a new image, which the cluster then picks up and
+      // deploys on its own. The soak leaves time for a bad upstream release to be pulled.
+      matchUpdateTypes: ["minor", "patch", "digest", "pinDigest"],
+      automerge: true,
+      automergeType: "pr",
+      minimumReleaseAge: "3 days",
+      ignoreTests: false,
+    },
+    {
+      description: "0.x minors are breaking releases under semver: review by hand",
+      matchCurrentVersion: "/^v?0\\./",
+      matchUpdateTypes: ["minor"],
+      automerge: false,
+    },
+    {
+      description: "The fetch server follows calendar versions (2026.11.11): every release reads as major or minor, so allow them all",
+      matchPackageNames: ["mcp-server-fetch"],
+      automerge: true,
+      automergeType: "pr",
+      minimumReleaseAge: "3 days",
+      ignoreTests: false,
+    },
+  ],
+}
