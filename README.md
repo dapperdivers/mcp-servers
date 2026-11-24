@@ -6,7 +6,9 @@ which server runs.
 
 | Server      | Tools                                | What it reads                                                                               |
 | ----------- | ------------------------------------ | ------------------------------------------------------------------------------------------- |
+| `cve`       | `cve_lookup`, `kev_recent`           | NVD severity, CISA known-exploited status and EPSS score for a CVE; recent KEV additions.   |
 | `deals`     | `ebay_search`, `gsa_auctions_search` | Live eBay US listings (eBay Browse API) and active federal surplus lots (GSA Auctions API). |
+| `weather`   | `weather_outlook`                    | US forecast and active alerts for a point (National Weather Service API).                   |
 | `web-fetch` | `fetch`                              | Any public web page, returned as Markdown (the upstream `mcp-server-fetch`, unchanged).     |
 
 Every server here is read-only.
@@ -46,6 +48,30 @@ policy, so one server's network access and credentials are never shared with ano
 
 The eBay keys are a production keyset from <https://developer.ebay.com> (App ID and Cert
 ID); the GSA key is free from <https://api.data.gov/signup>.
+
+### cve
+
+| Variable      | Needed for | Without it                                              |
+| ------------- | ---------- | ------------------------------------------------------- |
+| `NVD_API_KEY` | nothing    | NVD allows 5 requests per 30 seconds instead of 50.     |
+
+- **`cve_lookup`** takes up to five CVE ids and returns, for each: the NVD record (CVSS score,
+  severity and vector from the newest version present, weaknesses, dates), whether it is in
+  CISA's Known Exploited Vulnerabilities catalogue, and its EPSS score. If one source fails,
+  the others are still returned and the failure is named.
+- **`kev_recent`** lists what CISA added to the catalogue in the last N days.
+- Answers are cached for an hour.
+- Network: `services.nvd.nist.gov`, `api.first.org`, `www.cisa.gov`, all on 443. No key needed.
+
+### weather
+
+- **`weather_outlook`** takes a latitude and longitude and returns active alerts (most severe
+  first), the forecast in 12-hour periods, and a summary with each night's low and each
+  day's high as numbers. One tool on purpose: a caller that asks for the forecast cannot
+  skip the alerts.
+- The caller passes the coordinates; nothing about a location is stored or configured here.
+- US only (a point outside National Weather Service coverage returns an error).
+- Network: `api.weather.gov` on 443. No key, no variables.
 
 ### web-fetch
 

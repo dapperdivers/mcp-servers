@@ -14,7 +14,12 @@ from mcp_servers import __main__ as entry
 from mcp_servers import serving
 
 TOKEN = "test-token"
-EXPECTED_TOOLS = {"deals": {"ebay_search", "gsa_auctions_search"}, "web-fetch": {"fetch"}}
+EXPECTED_TOOLS = {
+    "cve": {"cve_lookup", "kev_recent"},
+    "deals": {"ebay_search", "gsa_auctions_search"},
+    "weather": {"weather_outlook"},
+    "web-fetch": {"fetch"},
+}
 
 
 def free_port():

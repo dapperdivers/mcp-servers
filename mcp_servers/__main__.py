@@ -11,7 +11,9 @@ from . import serving
 
 # name -> (module in this package, one-line description shown by --help)
 SERVERS = {
+    "cve": ("cve", "CVE lookup: NVD severity, CISA known-exploited status, EPSS score."),
     "deals": ("deals", "Hardware prices: live eBay US listings and active GSA Auctions surplus lots."),
+    "weather": ("weather", "US forecast and active alerts for a point (National Weather Service)."),
     "web-fetch": ("web_fetch", "Read a public web page as Markdown (upstream mcp-server-fetch)."),
 }
 
