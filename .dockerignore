@@ -1,0 +1,4 @@
+*
+!requirements.txt
+!mcp_servers/
+**/__pycache__/

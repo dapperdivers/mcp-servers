@@ -1,0 +1,155 @@
+---
+# yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
+name: Build
+
+# Pull requests: build the image and run the tests in it.
+# Push to main: the same, then push the image to ghcr.io and start it once the way the
+# cluster does (uid 65534, read-only root filesystem). The digest to pin is in the job summary.
+
+on:
+  pull_request:
+    branches: ["main"]
+  push:
+    branches: ["main"]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+env:
+  IMAGE: ghcr.io/dapperdivers/mcp-servers
+
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Buildx
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      - name: Build the image (not pushed)
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          platforms: linux/amd64
+          push: false
+          load: true
+          provenance: false
+          tags: mcp-servers:ci
+
+      # The image's Python and packages are the ones the servers run on, so the suite runs
+      # on them too, against the code baked into the image (/app), under the pod's constraints.
+      # No network: the tests start each server on a local port and never call a real API.
+      - name: Tests inside the image
+        run: |
+          docker run --rm --read-only --user 65534:65534 --network none \
+            --cap-drop ALL --security-opt no-new-privileges \
+            --volume "${PWD}/tests:/tests:ro" --workdir /app --entrypoint python3 \
+            mcp-servers:ci -B -m unittest discover --start-directory /tests --verbose
+
+  push:
+    name: Build and push
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    needs: test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Work out the tags
+        id: tags
+        run: |
+          # Dots only: Renovate reads a "-suffix" as an image variant and would never
+          # offer the next build. The run number keeps same-day builds in order.
+          build="$(date -u +%Y.%m.%d).${GITHUB_RUN_NUMBER}"
+          {
+            echo "build=${build}"
+            echo "list<<EOF"
+            echo "${IMAGE}:${build}"
+            echo "${IMAGE}:sha-${GITHUB_SHA::7}"
+            echo "${IMAGE}:latest"
+            echo "EOF"
+          } >> "${GITHUB_OUTPUT}"
+
+      - name: Setup Buildx
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      - name: Log in to ghcr.io
+        uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push
+        id: build
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          platforms: linux/amd64
+          push: true
+          # One plain image manifest, so the digest below is the image itself.
+          provenance: false
+          tags: ${{ steps.tags.outputs.list }}
+          labels: |
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.version=${{ steps.tags.outputs.build }}
+
+      # Pull what was pushed, by digest, and start a server the way the pod does.
+      - name: Run the pushed image as uid 65534 with a read-only root filesystem
+        env:
+          DIGEST: ${{ steps.build.outputs.digest }}
+        run: |
+          docker run --detach --name smoke --pull always --read-only --user 65534:65534 \
+            --cap-drop ALL --security-opt no-new-privileges \
+            --env MCP_AUTH_TOKEN=smoke --publish 127.0.0.1:8000:8000 \
+            "${IMAGE}@${DIGEST}" deals
+          for _ in $(seq 1 20); do
+            curl --silent --fail http://127.0.0.1:8000/healthz && break
+            sleep 1
+          done
+          curl --silent --fail http://127.0.0.1:8000/healthz
+          curl --silent --fail --header "Authorization: Bearer smoke" \
+            --header "Content-Type: application/json" \
+            --header "Accept: application/json, text/event-stream" \
+            --data '{"jsonrpc":"2.0","id":1,"method":"tools/list"}' \
+            http://127.0.0.1:8000/mcp | grep --quiet '"ebay_search"'
+          docker rm --force smoke
+
+      - name: Summary
+        env:
+          DIGEST: ${{ steps.build.outputs.digest }}
+          BUILD: ${{ steps.tags.outputs.build }}
+        run: |
+          {
+            echo "### Pushed ${IMAGE}"
+            echo
+            echo "| | |"
+            echo "| --- | --- |"
+            echo "| Build tag | \`${BUILD}\` |"
+            echo "| Commit tag | \`sha-${GITHUB_SHA::7}\` |"
+            echo "| Digest | \`${DIGEST}\` |"
+            echo
+            echo "Pin in the cluster's HelmRelease:"
+            echo
+            echo '```yaml'
+            echo "repository: ${IMAGE}"
+            echo "tag: ${BUILD}@${DIGEST}"
+            echo '```'
+          } >> "${GITHUB_STEP_SUMMARY}"

@@ -1,0 +1,5 @@
+# The MCP SDK, and the ASGI server it is run with (imported directly by serving.py).
+mcp==2.3.0
+uvicorn==0.54.0
+# web-fetch: the upstream fetch server, wrapped by mcp_servers/web_fetch.py.
+mcp-server-fetch==2026.11.11
