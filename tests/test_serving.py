@@ -17,7 +17,7 @@ TOKEN = "test-token"
 EXPECTED_TOOLS = {
     "cve": {"cve_lookup", "kev_recent"},
     "deals": {"ebay_search", "gsa_auctions_search"},
-    "weather": {"weather_outlook"},
+    "weather": {"night_sky", "weather_outlook"},
     "web-fetch": {"fetch"},
 }
 

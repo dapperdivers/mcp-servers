@@ -8,7 +8,7 @@ which server runs.
 | ----------- | ------------------------------------ | ------------------------------------------------------------------------------------------- |
 | `cve`       | `cve_lookup`, `kev_recent`           | NVD severity, CISA known-exploited status and EPSS score for a CVE; recent KEV additions.   |
 | `deals`     | `ebay_search`, `gsa_auctions_search` | Live eBay US listings (eBay Browse API) and active federal surplus lots (GSA Auctions API). |
-| `weather`   | `weather_outlook`                    | US forecast and active alerts for a point (National Weather Service API).                   |
+| `weather`   | `weather_outlook`, `night_sky`       | US forecast and alerts for a point; tonight's sky (moon, planets, ISS passes, clouds).       |
 | `web-fetch` | `fetch`                              | Any public web page, returned as Markdown (the upstream `mcp-server-fetch`, unchanged).     |
 
 Every server here is read-only.
@@ -69,9 +69,21 @@ ID); the GSA key is free from <https://api.data.gov/signup>.
   first), the forecast in 12-hour periods, and a summary with each night's low and each
   day's high as numbers. One tool on purpose: a caller that asks for the forecast cannot
   skip the alerts.
+- **`night_sky`** says what is worth looking up at tonight from the same point: when it gets
+  dark, the moon (phase, rise, set), which naked-eye planets are up and where, visible passes
+  of the International Space Station, forecast cloud cover for the dark hours, the
+  geomagnetic (Kp) forecast, and the day's closest asteroid flybys. Darkness, moon, planets
+  and ISS passes are computed with [Skyfield](https://rhodesmill.org/skyfield/) from JPL's
+  DE421 ephemeris, which is baked into the image; the rest is fetched, and a source that fails
+  is named in `errors` while everything else still comes back.
 - The caller passes the coordinates; nothing about a location is stored or configured here.
 - US only (a point outside National Weather Service coverage returns an error).
-- Network: `api.weather.gov` on 443. No key, no variables.
+- Network, all on 443: `api.weather.gov`, `celestrak.org` (ISS orbit),
+  `services.swpc.noaa.gov` (Kp), `api.nasa.gov` (asteroids).
+
+| Variable       | Needed for | Without it                                                  |
+| -------------- | ---------- | ----------------------------------------------------------- |
+| `NASA_API_KEY` | nothing    | The asteroid list uses the shared `DEMO_KEY` (a few dozen calls a day). An api.data.gov key works. |
 
 ### web-fetch
 

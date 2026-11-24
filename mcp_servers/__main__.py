@@ -13,7 +13,7 @@ from . import serving
 SERVERS = {
     "cve": ("cve", "CVE lookup: NVD severity, CISA known-exploited status, EPSS score."),
     "deals": ("deals", "Hardware prices: live eBay US listings and active GSA Auctions surplus lots."),
-    "weather": ("weather", "US forecast and active alerts for a point (National Weather Service)."),
+    "weather": ("weather", "US forecast, alerts and tonight's sky for a point (NWS, Skyfield)."),
     "web-fetch": ("web_fetch", "Read a public web page as Markdown (upstream mcp-server-fetch)."),
 }
 

@@ -24,6 +24,12 @@ RUN pip install --no-cache-dir --disable-pip-version-check --root-user-action=ig
         -r /tmp/requirements.txt \
  && rm -f /tmp/requirements.txt
 
+# JPL's DE421 planetary ephemeris (16 MB, valid 1900-2053) for the night_sky tool, fetched
+# once here so the server never downloads anything at run time. The checksum pins the file.
+ENV SKYFIELD_DATA=/opt/skyfield
+RUN python3 -c "from skyfield.api import Loader; Loader('/opt/skyfield', verbose=False)('de421.bsp')" \
+ && echo "a20a7139da04cbc462454634918e9a9ca69127044e2cc9d4f9c16e238d2deedc  /opt/skyfield/de421.bsp" | sha256sum -c -
+
 WORKDIR /app
 COPY mcp_servers/ /app/mcp_servers/
 

@@ -1,5 +1,8 @@
 # The MCP SDK, and the ASGI server it is run with (imported directly by serving.py).
 mcp==2.3.0
 uvicorn==0.54.0
+# weather (night_sky): astronomy, and time zone data for local times.
+skyfield==1.55
+tzdata==2026.2
 # web-fetch: the upstream fetch server, wrapped by mcp_servers/web_fetch.py.
 mcp-server-fetch==2026.11.11

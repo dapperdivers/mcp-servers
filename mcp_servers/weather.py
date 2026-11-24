@@ -146,3 +146,6 @@ def weather_outlook(latitude: float, longitude: float, days: int = 4) -> dict:
         "summary": summarize(periods),
         "periods": periods,
     }
+
+
+from . import sky  # noqa: E402,F401  (registers the night_sky tool on this server)
