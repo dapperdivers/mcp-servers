@@ -5,4 +5,4 @@ uvicorn==0.54.0
 skyfield==1.55
 tzdata==2026.2
 # web-fetch: the upstream fetch server, wrapped by mcp_servers/web_fetch.py.
-mcp-server-fetch==2026.11.11
+mcp-server-fetch==2026.11.18
